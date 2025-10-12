@@ -133,14 +133,14 @@ If you encounter delegation warnings with the above formulas, use these delegati
 
 ```powerapps
 // Alternative 1: Using With() to separate filters
-Text(With({UserExpenses: Filter(Expenses, SubmittedBy.Email = User().Email)}, 
-    Sum(Filter(UserExpenses, Status.Value = "Submitted"), Amount)), "$#,##0.00")
+Text(With({Expenses: Filter(Expenses, SubmittedBy.Email = User().Email)}, 
+    Sum(Filter(Expenses, Status.Value = "Submitted"), Amount)), "$#,##0.00")
 
 // Alternative 2: Using a collection (add to App.OnStart)
-ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
+ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 
 // Then use in labels:
-Text(Sum(Filter(UserExpenses, Status.Value = "Submitted"), Amount), "$#,##0.00")
+Text(Sum(Filter(Expenses, Status.Value = "Submitted"), Amount), "$#,##0.00")
 
 // Alternative 3: For very large datasets, consider using AddColumns with aggregation
 Text(Sum(AddColumns(Filter(Expenses, SubmittedBy.Email = User().Email && Status.Value = "Submitted"), 
@@ -153,29 +153,29 @@ Use Alternative 2 with collections for better performance:
 1. **Add to App.OnStart:**
 ```powerapps
 // Load user's expenses into a collection on app start
-ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
+ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 ```
 
 2. **Update status card formulas to:**
 ```powerapps
 // Submitted
-Text(Sum(Filter(UserExpenses, Status.Value = "Submitted"), Amount), "$#,##0.00")
+Text(Sum(Filter(Expenses, Status.Value = "Submitted"), Amount), "$#,##0.00")
 
 // Approved  
-Text(Sum(Filter(UserExpenses, Status.Value = "Approved"), Amount), "$#,##0.00")
+Text(Sum(Filter(Expenses, Status.Value = "Approved"), Amount), "$#,##0.00")
 
 // Rejected
-Text(Sum(Filter(UserExpenses, Status.Value = "Rejected"), Amount), "$#,##0.00")
+Text(Sum(Filter(Expenses, Status.Value = "Rejected"), Amount), "$#,##0.00")
 
 // Paid
-Text(Sum(Filter(UserExpenses, Status.Value = "Paid"), Amount), "$#,##0.00")
+Text(Sum(Filter(Expenses, Status.Value = "Paid"), Amount), "$#,##0.00")
 ```
 
 3. **Refresh collection when new expenses are added:**
 Add this to the submit button after successful expense creation:
 ```powerapps
 // Refresh the collection after adding new expense
-ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
+ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 ```
 
 #### Gallery Data Source
@@ -776,7 +776,7 @@ Notification Notification
 2. Set the **OnStart** property to:
 ```powerapps
 // Load user's expenses into a collection for better performance
-ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
+ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 ```
 3. This prevents delegation warnings and improves performance for status calculations
 
@@ -810,7 +810,7 @@ ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
      - Color: White
      - Font weight: Bold
    - Add Label for amount:
-     - Text: `Text(Sum(Filter(UserExpenses, Status.Value = "Submitted"), Amount), "$#,##0.00")`
+     - Text: `Text(Sum(Filter(expenses, Status.Value = "Submitted"), Amount), "$#,##0.00")`
      - Color: White
      - Font size: 18
 
@@ -820,7 +820,7 @@ ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Fill: `RGBA(16, 124, 16, 1)` (Green)
    - Add Labels similar to Card 1:
      - Title: `"APPROVED"`
-     - Amount: `Text(Sum(Filter(UserExpenses, Status.Value = "Approved"), Amount), "$#,##0.00")`
+     - Amount: `Text(Sum(Filter(expenses, Status.Value = "Approved"), Amount), "$#,##0.00")`
 
    **Card 3 - Rejected:**
    - Insert > Layout > Vertical container (inside StatusContainer)
@@ -828,7 +828,7 @@ ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Fill: `RGBA(209, 52, 56, 1)` (Red)
    - Add Labels:
      - Title: `"REJECTED"`
-     - Amount: `Text(Sum(Filter(UserExpenses, Status.Value = "Rejected"), Amount), "$#,##0.00")`
+     - Amount: `Text(Sum(Filter(expenses, Status.Value = "Rejected"), Amount), "$#,##0.00")`
 
    **Card 4 - Paid:**
    - Insert > Layout > Vertical container (StatusContainer)
@@ -836,7 +836,7 @@ ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Fill: `RGBA(96, 94, 92, 1)` (Gray)
    - Add Labels:
      - Title: `"PAID"`
-     - Amount: `Text(Sum(Filter(UserExpenses, Status.Value = "Paid"), Amount), "$#,##0.00")`
+     - Amount: `Text(Sum(Filter(expenses, Status.Value = "Paid"), Amount), "$#,##0.00")`
 
 ##### Add Filter Controls
 1. **Add Horizontal Container for Filters:**
@@ -1028,7 +1028,7 @@ ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
            );
            
            // Refresh the collection to update status cards
-           ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
+           ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
            
            // Reset form and navigate
            Reset(TitleInput);
