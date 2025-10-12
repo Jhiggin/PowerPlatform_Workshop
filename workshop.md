@@ -798,8 +798,6 @@ ClearCollect(UserExpenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Insert > Layout > Horizontal container
    - Name: `StatusContainer`
    - Position below header
-   - Width: App.Width - 40
-   - Height: 120
 
 4. **Add Status Cards (4 cards in container):**
 
