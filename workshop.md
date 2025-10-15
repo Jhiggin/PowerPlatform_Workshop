@@ -152,7 +152,7 @@ Use Alternative 2 with collections for better performance:
 
 1. **Add to App.OnStart:**
 ```powerapps
-// Load user's expenses into a collection on app start
+// Load user's Expenses into a collection on app start
 ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 ```
 
@@ -171,11 +171,11 @@ Text(Sum(Filter(Expenses, Status.Value = "Rejected"), Amount), "$#,##0.00")
 Text(Sum(Filter(Expenses, Status.Value = "Paid"), Amount), "$#,##0.00")
 ```
 
-3. **Refresh collection when new expenses are added:**
+3. **Refresh collection when new Expenses are added:**
 Add this to the submit button after successful expense creation:
 ```powerapps
 // Refresh the collection after adding new expense
-ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
+ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 ```
 
 #### Gallery Data Source
@@ -484,8 +484,8 @@ Notification Notification
 
 ### Power Apps Security
 - **App Sharing:**
-  - Share with all employees who need to submit expenses
-  - Managers need access to approve expenses
+  - Share with all employees who need to submit Expenses
+  - Managers need access to approve Expenses
 
 ### Power Automate Permissions
 - **Flow Permissions:**
@@ -775,8 +775,8 @@ Notification Notification
 1. Select **"App"** in the tree view
 2. Set the **OnStart** property to:
 ```powerapps
-// Load user's expenses into a collection for better performance
-ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
+// Load user's Expenses into a collection for better performance
+ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 ```
 3. This prevents delegation warnings and improves performance for status calculations
 
@@ -810,7 +810,7 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
      - Color: White
      - Font weight: Bold
    - Add Label for amount:
-     - Text: `Text(Sum(Filter(expenses, Status.Value = "Submitted"), Amount), "$#,##0.00")`
+     - Text: `Text(Sum(Filter(Expenses, Status.Value = "Submitted"), Amount), "$#,##0.00")`
      - Color: White
      - Font size: 18
 
@@ -820,7 +820,7 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Fill: `RGBA(16, 124, 16, 1)` (Green)
    - Add Labels similar to Card 1:
      - Title: `"APPROVED"`
-     - Amount: `Text(Sum(Filter(expenses, Status.Value = "Approved"), Amount), "$#,##0.00")`
+     - Amount: `Text(Sum(Filter(Expenses, Status.Value = "Approved"), Amount), "$#,##0.00")`
 
    **Card 3 - Rejected:**
    - Insert > Layout > Vertical container (inside StatusContainer)
@@ -828,7 +828,7 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Fill: `RGBA(209, 52, 56, 1)` (Red)
    - Add Labels:
      - Title: `"REJECTED"`
-     - Amount: `Text(Sum(Filter(expenses, Status.Value = "Rejected"), Amount), "$#,##0.00")`
+     - Amount: `Text(Sum(Filter(Expenses, Status.Value = "Rejected"), Amount), "$#,##0.00")`
 
    **Card 4 - Paid:**
    - Insert > Layout > Vertical container (StatusContainer)
@@ -836,7 +836,7 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Fill: `RGBA(96, 94, 92, 1)` (Gray)
    - Add Labels:
      - Title: `"PAID"`
-     - Amount: `Text(Sum(Filter(expenses, Status.Value = "Paid"), Amount), "$#,##0.00")`
+     - Amount: `Text(Sum(Filter(Expenses, Status.Value = "Paid"), Amount), "$#,##0.00")`
 
 ##### Add Filter Controls
 1. **Add Horizontal Container for Filters:**
@@ -845,7 +845,7 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Position below status cards
 
 2. **Add Category Filter:**
-   - Insert > Input > Dropdown
+   - Insert > Input > DropDown
    - Name: `CategoryFilter`
    - Items: `Distinct(Expenses, Category.Value)`
    - Allow empty selection: True
@@ -854,7 +854,7 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 3. **Add Status Filter:**
    - Insert > Input > Dropdown
    - Name: `StatusFilter`
-   - Items: `["Submitted", "Approved", "Rejected", "Paid"]`
+   - Items: `Distinct(Expenses, Status.Value)`
    - Allow empty selection: True
    - Hint text: `"All Statuses"`
 
@@ -877,7 +877,6 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Insert > Gallery > Vertical gallery
    - Name: `ExpenseGallery`
    - Position below filters
-   - Width: App.Width - 40
    - Height: Remaining screen space
 
 2. **Configure Gallery Data Source:**
@@ -896,11 +895,11 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
        },
        Switch(
            SortFilter.Selected.Value,
-           "Date (Newest)", SortByColumns(FilteredExpenses, "SubmittedDate", Descending),
-           "Date (Oldest)", SortByColumns(FilteredExpenses, "SubmittedDate", Ascending),
-           "Amount (High to Low)", SortByColumns(FilteredExpenses, "Amount", Descending),
-           "Amount (Low to High)", SortByColumns(FilteredExpenses, "Amount", Ascending),
-           SortByColumns(FilteredExpenses, "SubmittedDate", Descending)
+           "Date (Newest)", SortByColumns(FilteredExpenses, "SubmittedDate", SortOrder.Descending),
+           "Date (Oldest)", SortByColumns(FilteredExpenses, "SubmittedDate", SortOrder.Ascending),
+           "Amount (High to Low)", SortByColumns(FilteredExpenses, "Amount", SortOrder.Descending),
+           "Amount (Low to High)", SortByColumns(FilteredExpenses, "Amount", SortOrder.Ascending),
+           SortByColumns(FilteredExpenses, "SubmittedDate", SortOrder.Descending)
        )
    )
    ```
@@ -908,7 +907,8 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 <!-- 3. **Customize Gallery Template:**
    - Select first item in gallery
    - Add Labels for:
-     - **Title:** `ThisItem.Title`
+     - **Expense Title:** `ThisItem.Title`
+     - **Submitted By:** 'ThisItem.SubmittedBy.DisplayName'
      - **Amount:** `Text(ThisItem.Amount, "$#,##0.00")`
      - **Category:** `ThisItem.Category.Value`
      - **Date:** `Text(ThisItem.ExpenseDate, "mm/dd/yyyy")`
@@ -981,67 +981,108 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Insert > Button
    - Text: `"Submit Expense"`
    - OnSelect:
-   ```powerapps
-   If(
-       IsBlank(TitleInput.Text) ||
-       IsBlank(AmountInput.Text) ||
-       Value(AmountInput.Text) <= 0 ||
-       IsBlank(CategoryDropdown.Selected) ||
-       IsBlank(ExpenseDatePicker.SelectedDate) ||
-       IsBlank(JustificationInput.Text),
-       
-       Notify("Please fill in all required fields", NotificationType.Error),
-       
-       With(
-           {
-               NewExpense: Patch(
-                   Expenses,
-                   Defaults(Expenses),
-                   {
-                       Title: TitleInput.Text,
-                       Amount: Value(AmountInput.Text),
-                       Category: {Value: CategoryDropdown.Selected.Value},
-                       ExpenseDate: ExpenseDatePicker.SelectedDate,
-                       SubmittedBy: User(),
-                       SubmittedDate: Now(),
-                       Status: {Value: "Submitted"},
-                       BusinessJustification: JustificationInput.Text,
-                       Manager: If(
-                           !IsEmpty(ExpenseManagers),
-                           LookUp(ExpenseManagers, Employee.Email = User().Email).Manager,
-                           User()
-                       )
-                   }
-               )
-           },
-           // Trigger Power Automate Flow
-           'ExpenseApprovalWorkflow'.Run(
-               NewExpense.ID,
-               NewExpense.Title,
-               NewExpense.Amount,
-               User().FullName,
-               If(
-                   !IsEmpty(ExpenseManagers),
-                   LookUp(ExpenseManagers, Employee.Email = User().Email).Manager.Email,
-                   User().Email
-               )
-           );
-           
-           // Refresh the collection to update status cards
-           ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
-           
-           // Reset form and navigate
-           Reset(TitleInput);
-           Reset(AmountInput);
-           Reset(CategoryDropdown);
-           Reset(ExpenseDatePicker);
-           Reset(JustificationInput);
-           Reset(ReceiptUpload);
-           
-           Navigate(DashboardScreen, ScreenTransition.UnCover);
-           Notify("Expense submitted successfully!", NotificationType.Success)
-       )
-   )
+```powerapps
+If(
+    IsBlank(TitleInput.Text) ||
+    IsBlank(AmountInput.Text) ||
+    Value(AmountInput.Text) <= 0 ||
+    IsBlank(CategoryDropdown.Selected) ||
+    IsBlank(ExpenseDatePicker.SelectedDate) ||
+    IsBlank(JustificationInput.Text),
+    
+    Notify("Please fill in all required fields", NotificationType.Error),
+
+    With(
+        {
+            NewExpense: Patch(
+                Expenses,
+                Defaults(Expenses),
+                {
+                    // Basic fields
+                    Title: TitleInput.Text,
+                    Amount: Value(AmountInput.Text),
+                    BusinessJustification: JustificationInput.Text,
+                    ExpenseDate: ExpenseDatePicker.SelectedDate,
+
+                    // Choice fields
+                    Category: { Value: CategoryDropdown.Selected.Value },
+                    Status: { Value: "Submitted" },
+                    SubmittedDate: Now(),
+
+                    // SubmittedBy - full SPListExpandedUser structure
+                    SubmittedBy: {
+                        '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
+                        Claims: "i:0#.f|membership|" & User().Email,
+                        Department: "",
+                        DisplayName: User().FullName,
+                        Email: User().Email,
+                        JobTitle: "",
+                        Picture: ""
+                    },
+
+                    // Manager - full SPListExpandedUser structure
+                    Manager: With(
+                        {
+                            mgr: LookUp(ExpenseManagers, Employee.Email = User().Email).Manager
+                        },
+                        If(
+                            !IsBlank(mgr),
+                            {
+                                '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
+                                Claims: "i:0#.f|membership|" & mgr.Email,
+                                Department: "",
+                                DisplayName: mgr.DisplayName,
+                                Email: mgr.Email,
+                                JobTitle: "",
+                                Picture: ""
+                            },
+                            {
+                                '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
+                                Claims: "i:0#.f|membership|" & User().Email,
+                                Department: "",
+                                DisplayName: User().FullName,
+                                Email: User().Email,
+                                JobTitle: "",
+                                Picture: ""
+                            }
+                        )
+                    )
+                }
+            )
+        },
+
+        // Trigger approval flow
+        'ExpenseApprovalWorkflow'.Run(
+            NewExpense.ID,
+            NewExpense.Title,
+            NewExpense.Amount,
+            User().FullName,
+            LookUp(ExpenseManagers, Employee.Email = User().Email).Manager.Email
+        );
+
+        // Refresh user's expenses
+        ClearCollect(
+            UserExpenses,
+            Filter(
+                Expenses,
+                Lower(SubmittedBy.Email) = Lower(User().Email)
+            )
+        );
+
+        // Reset form inputs
+        Reset(TitleInput);
+        Reset(AmountInput);
+        Reset(CategoryDropdown);
+        Reset(ExpenseDatePicker);
+        Reset(JustificationInput);
+        Reset(ReceiptUpload);
+
+        // Navigate and notify
+        Navigate(DashboardScreen, ScreenTransition.UnCover);
+        Notify("Expense submitted successfully!", NotificationType.Success)
+    )
+)
+
    ```
 
 6. **Add Cancel Button:**
@@ -1123,7 +1164,7 @@ ClearCollect(expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    - Test mobile responsiveness
 
 2. **Security Testing:**
-   - Verify users can only see their own expenses
+   - Verify users can only see their own Expenses
    - Test manager approval permissions
    - Verify data access controls
 
