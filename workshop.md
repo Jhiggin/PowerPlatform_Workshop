@@ -978,7 +978,7 @@ ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
        },
        If(
            !IsBlank(ReceiptFile),
-           "📎 Click to view receipt: " & ReceiptFile.Name,
+           "Click to view receipt: " & ReceiptFile.Name,
            ""
        )
    )
@@ -989,11 +989,6 @@ ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
 
    **Note:** Replace `yourtenant` and `YourSiteName` with your actual SharePoint tenant and site name.
    
-   - Visible property:
-   ```powerapps
-   !IsBlank(LookUp(ExpenseReceipts, ExpenseID = SelectedExpense.ID))
-   ```
-
 5. **Add Approval Status Section:**
    - Insert > Label
    - Text: `"Approval Status"`
