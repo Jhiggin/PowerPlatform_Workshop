@@ -10,7 +10,7 @@ This document provides comprehensive instructions for creating a 3-screen expens
 4. [Screen 3: Expense Details](#screen-3-expense-details)
 5. [Power Automate Approval Flow](#power-automate-approval-flow)
 6. [Security & Permissions](#security--permissions)
-7. [Implementation Steps](#implementation-steps)
+7. [Implementation Steps](#detailed-build-instructions)
 
 ---
 
