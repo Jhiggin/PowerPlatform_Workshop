@@ -33,7 +33,7 @@ This document provides comprehensive instructions for creating a 3-screen expens
 | Manager | Person | No | Assigned manager for approval |
 | ApprovalComments | Multiple lines of text | No | Manager's approval/rejection comments |
 | ApprovedDate | Date/Time | No | Date of approval/rejection |
-| Receipt | Attachment | No | Receipt image/document |
+| ReceiptURL | Single line of text | No | Receipt image_path |
 | BusinessJustification | Multiple lines of text | Yes | Business reason for expense |
 
 **Choice Values for Status:**
@@ -84,120 +84,7 @@ This document provides comprehensive instructions for creating a 3-screen expens
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Components Details
 
-#### Status Summary Cards (Horizontal Container)
-- **Container:** Horizontal container with 4 cards
-- **Card Design:** Each card shows:
-  - Status name (large text)
-  - Total amount for that status (currency format)
-  - Background color coding:
-    - Submitted: Blue (#0078D4)
-    - Approved: Green (#107C10)
-    - Rejected: Red (#D13438)
-    - Paid: Gray (#605E5C)
-
-#### Filter Section
-- **Category Dropdown:** Filter by expense category
-- **Status Dropdown:** Filter by approval status
-- **Date Range:** Start and end date pickers
-- **Sort Dropdown:** Options: Date (newest first), Date (oldest first), Amount (high to low), Amount (low to high)
-
-#### Expense List Gallery
-- **Gallery Type:** Vertical gallery with custom template
-- **Template Design:**
-  - Left side: Category icon + expense title
-  - Center: Amount (large, bold)
-  - Right side: Status badge + "View Details" button
-  - Bottom: Submission date
-
-### Formulas & Logic
-
-#### Status Summary Calculations
-```powerapps
-// Submitted Total
-Sum(Filter(Expenses, SubmittedBy.Email = User().Email && Status.Value = "Submitted"), Amount)
-
-// Approved Total  
-Sum(Filter(Expenses, SubmittedBy.Email = User().Email && Status.Value = "Approved"), Amount)
-
-// Rejected Total
-Sum(Filter(Expenses, SubmittedBy.Email = User().Email && Status.Value = "Rejected"), Amount)
-
-// Paid Total
-Sum(Filter(Expenses, SubmittedBy.Email = User().Email && Status.Value = "Paid"), Amount)
-```
-
-**⚠️ Delegation Warning Fix:**
-If you encounter delegation warnings with the above formulas, use these delegation-friendly alternatives:
-
-```powerapps
-// Alternative 1: Using With() to separate filters
-Text(With({Expenses: Filter(Expenses, SubmittedBy.Email = User().Email)}, 
-    Sum(Filter(Expenses, Status.Value = "Submitted"), Amount)), "$#,##0.00")
-
-// Alternative 2: Using a collection (add to App.OnStart)
-ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
-
-// Then use in labels:
-Text(Sum(Filter(Expenses, Status.Value = "Submitted"), Amount), "$#,##0.00")
-
-// Alternative 3: For very large datasets, consider using AddColumns with aggregation
-Text(Sum(AddColumns(Filter(Expenses, SubmittedBy.Email = User().Email && Status.Value = "Submitted"), 
-    "AmountValue", Amount), AmountValue), "$#,##0.00")
-```
-
-**Recommended Approach for Production:**
-Use Alternative 2 with collections for better performance:
-
-1. **Add to App.OnStart:**
-```powerapps
-// Load user's Expenses into a collection on app start
-ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
-```
-
-2. **Update status card formulas to:**
-```powerapps
-// Submitted
-Text(Sum(Filter(Expenses, Status.Value = "Submitted"), Amount), "$#,##0.00")
-
-// Approved  
-Text(Sum(Filter(Expenses, Status.Value = "Approved"), Amount), "$#,##0.00")
-
-// Rejected
-Text(Sum(Filter(Expenses, Status.Value = "Rejected"), Amount), "$#,##0.00")
-
-// Paid
-Text(Sum(Filter(Expenses, Status.Value = "Paid"), Amount), "$#,##0.00")
-```
-
-3. **Refresh collection when new Expenses are added:**
-Add this to the submit button after successful expense creation:
-```powerapps
-// Refresh the collection after adding new expense
-ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
-```
-
-#### Gallery Data Source
-```powerapps
-// Base filter for current user
-With(
-    {
-        BaseFilter: Filter(
-            Expenses,
-            SubmittedBy.Email = User().Email
-        )
-    },
-    // Apply additional filters based on dropdown selections
-    Filter(
-        BaseFilter,
-        (IsBlank(CategoryFilter.Selected) || Category.Value = CategoryFilter.Selected.Value) &&
-        (IsBlank(StatusFilter.Selected) || Status.Value = StatusFilter.Selected.Value) &&
-        (IsBlank(StartDate.SelectedDate) || ExpenseDate >= StartDate.SelectedDate) &&
-        (IsBlank(EndDate.SelectedDate) || ExpenseDate <= EndDate.SelectedDate)
-    )
-)
-```
 
 ---
 
@@ -228,69 +115,6 @@ With(
 │                                                         │
 │              [Cancel]    [Submit Expense]               │
 └─────────────────────────────────────────────────────────┘
-```
-
-### Form Components
-
-#### Input Controls
-1. **Expense Title:** Text input (required)
-2. **Amount:** Number input with currency formatting (required)
-3. **Category:** Dropdown with predefined categories (required)
-4. **Expense Date:** Date picker (required, default to today)
-5. **Business Justification:** Multi-line text input (required)
-6. **Receipt:** File upload control (optional)
-
-#### Validation Rules
-```powerapps
-// Form validation before submission
-If(
-    IsBlank(TitleInput.Text) ||
-    IsBlank(AmountInput.Text) ||
-    AmountInput.Text <= 0 ||
-    IsBlank(CategoryDropdown.Selected) ||
-    IsBlank(ExpenseDatePicker.SelectedDate) ||
-    IsBlank(JustificationInput.Text),
-    
-    // Show error message
-    Notify("Please fill in all required fields", NotificationType.Error),
-    
-    // Proceed with submission
-    SubmitExpense()
-)
-```
-
-#### Submit Function
-```powerapps
-// SubmitExpense function
-Patch(
-    Expenses,
-    Defaults(Expenses),
-    {
-        Title: TitleInput.Text,
-        Amount: Value(AmountInput.Text),
-        Category: CategoryDropdown.Selected,
-        ExpenseDate: ExpenseDatePicker.SelectedDate,
-        SubmittedBy: User(),
-        SubmittedDate: Now(),
-        Status: {Value: "Submitted"},
-        BusinessJustification: JustificationInput.Text,
-        Manager: LookUp(ExpenseManagers, Employee.Email = User().Email).Manager
-    }
-);
-
-// Trigger Power Automate flow
-ExpenseApprovalFlow.Run(
-    Last(Expenses).ID,
-    TitleInput.Text,
-    Value(AmountInput.Text),
-    User().FullName,
-    LookUp(ExpenseManagers, Employee.Email = User().Email).Manager.Email
-);
-
-// Reset form and navigate back
-Reset(ExpenseForm);
-Navigate(DashboardScreen, ScreenTransition.UnCover);
-Notify("Expense submitted successfully!", NotificationType.Success)
 ```
 
 ---
@@ -337,37 +161,6 @@ Notify("Expense submitted successfully!", NotificationType.Success)
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Component Details
-
-#### Expense Information Display
-- **Display Form:** Shows all expense details in read-only format
-- **Conditional Formatting:** Status-based color coding
-- **Receipt Display:** Image control with zoom capability
-
-#### Approval Timeline
-- **Visual Progress:** Step-by-step approval process
-- **Status Indicators:** 
-  - Completed steps: Green checkmark
-  - Current step: Blue circle
-  - Pending steps: Gray circle
-- **Timestamps:** Show when each step was completed
-
-#### Action Buttons
-- **Edit Button:** Navigate to edit screen (only if status = "Submitted")
-- **Delete Button:** Delete expense (only if status = "Submitted")
-- **Back Button:** Return to dashboard
-
-### Navigation Logic
-```powerapps
-// Pass selected expense to detail screen
-Set(SelectedExpense, ThisItem);
-Navigate(ExpenseDetailScreen, ScreenTransition.Cover)
-
-// On detail screen, display the selected expense
-DisplayForm.Item = SelectedExpense
-```
-
----
 
 ## Power Automate Approval Flow
 
@@ -585,6 +378,13 @@ Notification Notification
    - Click on column header > **"Column settings" > "Edit"**
    - Change description to: "Expense description/title"
 
+7. **Add Receipt URL Column:**
+   - Click **"Add column"**
+   - Type: **Single line of text**
+   - Name: **ReceiptURL**
+   - Required: **No**
+   - Description: "URL link to receipt document"
+
 #### Step 1.3: Create ExpenseManagers List (Optional but Recommended)
 1. Click **"New" > "List"**
 2. Select **"Blank list"**
@@ -601,17 +401,25 @@ Notification Notification
 
 5. Populate with employee-manager relationships
 
-#### Step 1.4: Configure List Permissions
-1. Go to **Expenses** list
-2. Click **Settings gear > List settings**
-3. Under **Permissions and Management**, click **"Permissions for this list"**
-4. Click **"Stop Inheriting Permissions"**
-5. Configure permissions:
-   - **All Employees:** Contribute (can create and edit their own items)
-   - **Managers:** Full Control
-   - **HR/Finance:** Full Control
+#### Step 1.4: Create Document Library for Receipts
+1. In your SharePoint site, click **"New" > "Document library"**
+2. Name: **"ExpenseReceipts"**
+3. Description: **"Storage for expense receipt documents"**
+4. Click **"Create"**
+6. Add custom columns to the library:
+   
+   **Column 1: ExpenseID**
+   - Type: **Number**
+   - Required: **Yes**
+   - Description: "Links receipt to expense record"
+   
+   **Column 2: SubmittedBy**
+   - Type: **Person or Group**
+   - Required: **Yes**
+   - Description: "Employee who uploaded receipt"
 
-#### Step 1.5: Test Data Entry
+
+#### Step 1.6: Test Data Entry
 1. Create 2-3 test expense records
 2. Verify all fields save correctly
 3. Test different status values
@@ -637,6 +445,8 @@ Notification Notification
    - **Amount** (Number)
    - **SubmitterName** (Text)
    - **ManagerEmail** (Text)
+   - **ReceiptFile** (Object) - Optional (not File type)
+   - **HasReceipt** (Text)
 
 #### Step 2.3: Add Get Item Action
 1. Click **"New step"**
@@ -647,7 +457,62 @@ Notification Notification
    - **List Name:** Expenses
    - **Id:** Select **ExpenseID** from dynamic content
 
-#### Step 2.4: Add Start Approval Action
+#### Step 2.4: Add Receipt Upload (Conditional)
+1. Click **"New step"**
+2. Search for **"Control"**
+3. Select **"Condition"**
+4. Configure condition:
+   - **Choose a value:** Select **HasReceipt** from dynamic content
+   - **Condition:** is equal to
+   - **Choose a value:** Yes
+
+5. **In the "If yes" branch, add Create File action:**
+   - Click **"Add an action"**
+   - Search for **"SharePoint"**
+   - Select **"Create file"**
+   - Configure:
+     - **Site Address:** Your expense management site
+     - **Folder Path:** /ExpenseReceipts
+     - **File Name:** 
+       ```
+       @{triggerBody()['object']['name']}
+       ```
+     - **File Content:** 
+       ```
+       @{triggerBody()['object']['contentBytes']}
+       ```
+
+6. **Add Update File Properties (still in "If yes" branch):**
+   - Click **"Add an action"**
+   - Search for **"SharePoint"**
+   - Select **"Update file properties"**
+   - Configure:
+     - **Site Address:** Your expense management site
+     - **Library Name:** ExpenseReceipts
+     - **Id:** Select **ItemId** from Create file step
+     - **ExpenseID:** Select **ExpenseID** from trigger
+     - **SubmittedBy:** Select **SubmitterName** from trigger
+
+7. **Add Update Expense with Receipt URL (still in "If yes" branch):**
+   - Click **"Add an action"**
+   - Search for **"SharePoint"**
+   - Select **"Update item"**
+   - Configure:
+     - **Site Address:** Your expense management site
+     - **List Name:** Expenses
+     - **Id:** Select **ExpenseID** from trigger
+     - **ReceiptURL:** 
+       ```
+       @{body('Create_file')?['{Link to item}']}
+       ```
+       
+   **Alternative (if above doesn't work):**
+   Use the full URL format:
+   ```
+   https://yourtenant.sharepoint.com/sites/YourSiteName@{body('Create_file')?['Path']}
+   ```
+
+#### Step 2.5: Add Start Approval Action
 1. Click **"New step"**
 2. Search for **"Approvals"**
 3. Select **"Start and wait for an approval"**
@@ -669,7 +534,7 @@ Notification Notification
      Please review and approve/reject this expense request.
      ```
 
-#### Step 2.5: Add Condition for Approval Response
+#### Step 2.6: Add Condition for Approval Response
 1. Click **"New step"**
 2. Search for **"Control"**
 3. Select **"Condition"**
@@ -678,7 +543,7 @@ Notification Notification
    - **Condition:** is equal to
    - **Choose a value:** Approve
 
-#### Step 2.6: Configure "If Yes" Branch (Approved)
+#### Step 2.7: Configure "If Yes" Branch (Approved)
 1. In the **"If yes"** branch, click **"Add an action"**
 2. Search for **"SharePoint"**
 3. Select **"Update item"**
@@ -710,7 +575,7 @@ Notification Notification
      Your expense will be processed for payment.
      ```
 
-#### Step 2.7: Configure "If No" Branch (Rejected)
+#### Step 2.8: Configure "If No" Branch (Rejected)
 1. In the **"If no"** branch, click **"Add an action"**
 2. Search for **"SharePoint"**
 3. Select **"Update item"**
@@ -743,13 +608,14 @@ Notification Notification
      Please contact your manager if you have questions.
      ```
 
-#### Step 2.8: Save and Test Flow
+#### Step 2.9: Save and Test Flow
 1. Click **"Save"**
 2. Click **"Test"**
 3. Select **"Manually"**
 4. Provide test values for all inputs
 5. Click **"Run flow"**
 6. Verify flow completes successfully
+
 
 ---
 
@@ -770,6 +636,7 @@ Notification Notification
 5. Select **"Expenses"** list
 6. Click **"Connect"**
 7. Repeat for **"ExpenseManagers"** list if created
+8. Also connect to **"ExpenseReceipts"** document library for receipt management
 
 #### Step 3.2.1: Configure App.OnStart for Performance (Recommended)
 1. Select **"App"** in the tree view
@@ -976,114 +843,103 @@ ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
    **Receipt Upload:**
    - Insert > Media > Add picture
    - Name: `ReceiptUpload`
+   - Media: Camera and File upload enabled
 
 5. **Add Submit Button:**
    - Insert > Button
    - Text: `"Submit Expense"`
    - OnSelect:
-```powerapps
-If(
-    IsBlank(TitleInput.Text) ||
-    IsBlank(AmountInput.Text) ||
-    Value(AmountInput.Text) <= 0 ||
-    IsBlank(CategoryDropdown.Selected) ||
-    IsBlank(ExpenseDatePicker.SelectedDate) ||
-    IsBlank(JustificationInput.Text),
-    
-    Notify("Please fill in all required fields", NotificationType.Error),
+ ```powerapps
+ If(
+     IsBlank(TitleInput.Text) ||
+     IsBlank(AmountInput.Text) ||
+     Value(AmountInput.Text) <= 0 ||
+     IsBlank(CategoryDropdown.Selected) ||
+     IsBlank(ExpenseDatePicker.SelectedDate) ||
+     IsBlank(JustificationInput.Text),
+     
+     Notify("Please fill in all required fields", NotificationType.Error),
 
-    With(
-        {
-            NewExpense: Patch(
-                Expenses,
-                Defaults(Expenses),
-                {
-                    // Basic fields
-                    Title: TitleInput.Text,
-                    Amount: Value(AmountInput.Text),
-                    BusinessJustification: JustificationInput.Text,
-                    ExpenseDate: ExpenseDatePicker.SelectedDate,
+     With(
+         {
+             NewExpense: Patch(
+                 Expenses,
+                 Defaults(Expenses),
+                 {
+                     // Basic fields
+                     Title: TitleInput.Text,
+                     Amount: Value(AmountInput.Text),
+                     BusinessJustification: JustificationInput.Text,
+                     ExpenseDate: ExpenseDatePicker.SelectedDate,
 
-                    // Choice fields
-                    Category: { Value: CategoryDropdown.Selected.Value },
-                    Status: { Value: "Submitted" },
-                    SubmittedDate: Now(),
+                     // Choice fields
+                     Category: { Value: CategoryDropdown.Selected.Value },
+                     Status: { Value: "Submitted" },
+                     SubmittedDate: Now(),
 
-                    // SubmittedBy - full SPListExpandedUser structure
-                    SubmittedBy: {
-                        '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
-                        Claims: "i:0#.f|membership|" & User().Email,
-                        Department: "",
-                        DisplayName: User().FullName,
-                        Email: User().Email,
-                        JobTitle: "",
-                        Picture: ""
-                    },
+                     // User fields
+                     SubmittedBy: User(),
+                     Manager: If(
+                         !IsEmpty(ExpenseManagers),
+                         LookUp(ExpenseManagers, Employee.Email = User().Email).Manager,
+                         User()
+                     ),
+                     ReceiptURL: ""
+                 }
+             )
+         },
 
-                    // Manager - full SPListExpandedUser structure
-                    Manager: With(
-                        {
-                            mgr: LookUp(ExpenseManagers, Employee.Email = User().Email).Manager
-                        },
-                        If(
-                            !IsBlank(mgr),
-                            {
-                                '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
-                                Claims: "i:0#.f|membership|" & mgr.Email,
-                                Department: "",
-                                DisplayName: mgr.DisplayName,
-                                Email: mgr.Email,
-                                JobTitle: "",
-                                Picture: ""
-                            },
-                            {
-                                '@odata.type': "#Microsoft.Azure.Connectors.SharePoint.SPListExpandedUser",
-                                Claims: "i:0#.f|membership|" & User().Email,
-                                Department: "",
-                                DisplayName: User().FullName,
-                                Email: User().Email,
-                                JobTitle: "",
-                                Picture: ""
-                            }
-                        )
-                    )
-                }
-            )
-        },
+         // Trigger approval flow (includes receipt upload if provided)
+         'ExpenseApprovalWorkflow'.Run(
+             NewExpense.ID,
+             NewExpense.Title,
+             NewExpense.Amount,
+             User().FullName,
+             If(
+                 !IsBlank(LookUp(ExpenseManagers, Employee.Email = User().Email).Manager.Email),
+                 LookUp(ExpenseManagers, Employee.Email = User().Email).Manager.Email,
+                 User().Email
+             ),
+             If(
+                 !IsBlank(ReceiptUpload.Media),
+                 {
+                     name: "Receipt_" & NewExpense.ID & "_" & Text(Now(), "yyyymmdd_hhmmss") & ".jpg",
+                     contentBytes: ReceiptUpload.Media
+                 },
+                 Blank()
+             ),
+             If(
+                 !IsBlank(ReceiptUpload.Media),
+                 "Yes",
+                 "No"
+             )
+         );
 
-        // Trigger approval flow
-        'ExpenseApprovalWorkflow'.Run(
-            NewExpense.ID,
-            NewExpense.Title,
-            NewExpense.Amount,
-            User().FullName,
-            LookUp(ExpenseManagers, Employee.Email = User().Email).Manager.Email
-        );
+         // Refresh user's expenses
+         ClearCollect(
+             UserExpenses,
+             Filter(
+                 Expenses,
+                 Lower(SubmittedBy.Email) = Lower(User().Email)
+             )
+         );
 
-        // Refresh user's expenses
-        ClearCollect(
-            UserExpenses,
-            Filter(
-                Expenses,
-                Lower(SubmittedBy.Email) = Lower(User().Email)
-            )
-        );
+         // Reset form inputs
+         Reset(TitleInput);
+         Reset(AmountInput);
+         Reset(CategoryDropdown);
+         Reset(ExpenseDatePicker);
+         Reset(JustificationInput);
+         Reset(ReceiptUpload);
 
-        // Reset form inputs
-        Reset(TitleInput);
-        Reset(AmountInput);
-        Reset(CategoryDropdown);
-        Reset(ExpenseDatePicker);
-        Reset(JustificationInput);
-        Reset(ReceiptUpload);
-
-        // Navigate and notify
-        Navigate(DashboardScreen, ScreenTransition.UnCover);
-        Notify("Expense submitted successfully!", NotificationType.Success)
-    )
-)
+         // Navigate and notify
+         Navigate(DashboardScreen, ScreenTransition.UnCover);
+         Notify("Expense submitted successfully!", NotificationType.Success)
+     )
+ )
 
    ```
+
 
 6. **Add Cancel Button:**
    - Insert > Button
@@ -1094,7 +950,7 @@ If(
 
 1. **Add New Screen:**
    - Insert > New screen > Blank
-   - Name: `ExpenseDetailScreen`
+   - Name: `DetailScreen`
 
 2. **Add Header and Back Button:**
    - Insert > Button
@@ -1108,16 +964,46 @@ If(
    - Item: `SelectedExpense`
    - Fields: Select all relevant fields
 
-4. **Add Approval Status Section:**
+4. **Add Receipt Link:**
+   - Insert > Label
+   - Name: `ReceiptLinkLabel`
+   - Text property:
+   ```powerapps
+   With(
+       {
+           ReceiptFile: LookUp(
+               ExpenseReceipts,
+               ExpenseID = SelectedExpense.ID
+           )
+       },
+       If(
+           !IsBlank(ReceiptFile),
+           "📎 Click to view receipt: " & ReceiptFile.Name,
+           ""
+       )
+   )
+   ```
+   - OnSelect property: (same as button above)
+   - Color: `RGBA(0, 120, 212, 1)` (blue to look like a link)
+   - Underline: `true`
+
+   **Note:** Replace `yourtenant` and `YourSiteName` with your actual SharePoint tenant and site name.
+   
+   - Visible property:
+   ```powerapps
+   !IsBlank(LookUp(ExpenseReceipts, ExpenseID = SelectedExpense.ID))
+   ```
+
+5. **Add Approval Status Section:**
    - Insert > Label
    - Text: `"Approval Status"`
    - Font weight: Bold
 
-5. **Add Status Timeline:**
+6. **Add Status Timeline:**
    - Create visual timeline using shapes and labels
    - Use conditional formatting based on `SelectedExpense.Status.Value`
 
-6. **Add Action Buttons:**
+7. **Add Action Buttons:**
    
    **Edit Button:**
    - Insert > Button
@@ -1140,7 +1026,7 @@ If(
 1. In Power Apps, go to **Data > Power Automate**
 2. Click **"Add flow"**
 3. Select your **"Expense Approval Workflow"**
-4. The flow will now be available as `'ExpenseApprovalWorkflow'.Run()`
+4. The flow will now be available as: `'ExpenseApprovalWorkflow'.Run()`
 
 #### Step 3.7: Test the App
 1. Click **"Play"** button (▶️) to preview app
