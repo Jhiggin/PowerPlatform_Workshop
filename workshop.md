@@ -937,7 +937,6 @@ ClearCollect(Expenses, Filter(Expenses, SubmittedBy.Email = User().Email));
          Notify("Expense submitted successfully!", NotificationType.Success)
      )
  )
-
    ```
 
 
